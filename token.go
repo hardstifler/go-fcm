@@ -15,7 +15,23 @@ type tokenProvider struct {
 	tokenSource oauth2.TokenSource
 }
 
-func newTokenProvider(credentialsLocation string) (*tokenProvider, error) {
+func newTokenProviderFromBytes(ctx context.Context, jsonKey []byte) (*tokenProvider, error) {
+	if len(jsonKey) == 0 {
+		return nil, errors.New("empty")
+	}
+
+	cfg, err := google.JWTConfigFromJSON(jsonKey, firebaseScope)
+	if err != nil {
+		return nil, errors.Wrapf(err, "fcm: failed to get JWT config for the firebase.messaging scope")
+	}
+
+	ts := cfg.TokenSource(ctx)
+	return &tokenProvider{
+		tokenSource: ts,
+	}, nil
+}
+
+func newTokenProvider(ctx context.Context, credentialsLocation string) (*tokenProvider, error) {
 	jsonKey, err := ioutil.ReadFile(credentialsLocation)
 	if err != nil {
 		return nil, errors.Wrapf(err, "fcm: failed to read credentials file at: '%s'", credentialsLocation)
@@ -26,7 +42,7 @@ func newTokenProvider(credentialsLocation string) (*tokenProvider, error) {
 		return nil, errors.Wrapf(err, "fcm: failed to get JWT config for the firebase.messaging scope")
 	}
 
-	ts := cfg.TokenSource(context.Background())
+	ts := cfg.TokenSource(ctx)
 	return &tokenProvider{
 		tokenSource: ts,
 	}, nil

@@ -2,8 +2,10 @@ package fcm
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/oauth2"
 	"net/http"
 	"net/http/httputil"
 )
@@ -26,15 +28,34 @@ type Client struct {
 
 // NewClient creates new Firebase Cloud Messaging Client based on a json service account file credentials file.
 func NewClient(projectID string, credentialsLocation string, opts ...Option) (*Client, error) {
-	tp, err := newTokenProvider(credentialsLocation)
+	c := &Client{
+		endpoint: fmt.Sprintf(endpointFormat, projectID),
+		client:   http.DefaultClient,
+		//tokenProvider: tp,
+	}
+	for _, o := range opts {
+		if err := o(c); err != nil {
+			return nil, err
+		}
+	}
+	customerCli := &http.Client{
+		Transport: c.client.Transport,
+	}
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, customerCli)
+	tp, err := newTokenProvider(ctx, credentialsLocation)
 	if err != nil {
 		return nil, err
 	}
+	c.tokenProvider = tp
+	return c, nil
+}
 
+// NewClientFromBytes creates new Firebase Cloud Messaging Client based on a json service account file credentials file.
+func NewClientFromBytes(projectID string, jsonKey []byte, opts ...Option) (*Client, error) {
 	c := &Client{
-		endpoint:      fmt.Sprintf(endpointFormat, projectID),
-		client:        http.DefaultClient,
-		tokenProvider: tp,
+		endpoint: fmt.Sprintf(endpointFormat, projectID),
+		client:   http.DefaultClient,
+		//tokenProvider: tp,
 	}
 
 	for _, o := range opts {
@@ -42,7 +63,15 @@ func NewClient(projectID string, credentialsLocation string, opts ...Option) (*C
 			return nil, err
 		}
 	}
-
+	customerCli := &http.Client{
+		Transport: c.client.Transport,
+	}
+	ctx := context.WithValue(context.Background(), oauth2.HTTPClient, customerCli)
+	tp, err := newTokenProviderFromBytes(ctx, jsonKey)
+	if err != nil {
+		return nil, err
+	}
+	c.tokenProvider = tp
 	return c, nil
 }
 
