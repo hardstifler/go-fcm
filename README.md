@@ -118,6 +118,37 @@ func main() {
 	log.Printf("%#v\n", response)
 }
 ```
+### customer http client Example
+
+```go
+    dialer := &net.Dialer{
+		Timeout:   8 * time.Second,
+		KeepAlive: 60 * time.Second,
+	}
+	transport := &http.Transport{
+		DialContext:         dialer.DialContext,
+		MaxConnsPerHost:     200,
+		MaxIdleConnsPerHost: 50,
+		IdleConnTimeout:     60 * time.Second,
+	}
+	if proxyUrl != "" {
+		proxyUrl, err := url.Parse(proxyUrl)
+		if err == nil && proxyUrl != nil {
+			transport.Proxy = http.ProxyURL(proxyUrl)
+		}
+	}
+	_ = http2.ConfigureTransport(transport)
+	hCli := &http.Client{
+		Transport: transport,
+		Timeout:   40 * time.Second,
+	}
+	//fCli, err := fcm.NewClient(conf.FcmProjectID, conf.FcmCert, fcm.WithHTTPClient(hCli))
+	fCli, err := fcm.NewClientFromBytes(FcmProjectID, "ca.json", fcm.WithHTTPClient(hCli))
+	if err != nil {
+		return nil, err
+	}
+```
+
 
 ### Example JSON sent to FCM HTTP v1 API
 
